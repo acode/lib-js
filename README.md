@@ -1,5 +1,6 @@
 # StdLib JavaScript (Web) Bindings
 
+[StdLib Setup](https://github.com/stdlib/lib) |
 [Node](https://github.com/stdlib/lib-node) |
 [Python](https://github.com/stdlib/lib-python) |
 [Ruby](https://github.com/stdlib/lib-ruby) |
