@@ -37,8 +37,6 @@ require it.
 ## Usage
 
 ```javascript
-const lib = require('lib');
-
 // [1]: Call "stdlib.reflect" function, the latest version, from StdLib
 lib.stdlib.reflect(0, 1, {kwarg: 'value'}, (err, result) => {});
 
