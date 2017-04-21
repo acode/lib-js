@@ -110,7 +110,7 @@ var lib = (function() {
     cfg.port = cfg.port || PORT;
     cfg.path = cfg.path || PATH;
 
-    var pathname = names.slice(0, 2).join('/') + names.slice(2).join('/');
+    var pathname = names.slice(0, 2).join('/') + names.slice(2).join('/') + '/';
     var headers = {};
 
     if (body instanceof Blob) {
