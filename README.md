@@ -37,34 +37,33 @@ require it.
 
 ## Usage
 
+Here are some fictional calling examples for a user named `user` with a
+"hello world" service, `helloWorld`, that takes one parameter (named `name`)
+and is released to both a `dev` and `release` environment (with version `0.1.1`).
+
 ```javascript
-// [1]: Call "stdlib.reflect" function, the latest version, from StdLib
-lib.stdlib.reflect(0, 1, {kwarg: 'value'}, (err, result) => {});
+// Unnamed Parameters
+lib.user.helloWorld('world', (err, result) => {});
 
-// [2]: Call "stdlib.reflect" function from StdLib, with "dev" environment
-lib.stdlib.reflect['@dev'](0, 1, {kwarg: 'value'}, (err, result) => {});
+// Named Parameters
+lib.user.helloWorld({name: 'world'}, (err, result) => {});
 
-// [3]: Call "stdlib.reflect" function from StdLib, with "release" environment
-//      This is equivalent to (1)
-lib.stdlib.reflect['@release'](0, 1, {kwarg: 'value'}, (err, result) => {});
+// Environment Specified
+lib.user.helloWorld['@dev']('world', (err, result) => {});
 
-// [4]: Call "stdlib.reflect" function from StdLib, with specific version
-//      This is equivalent to (1)
-lib.stdlib.reflect['@0.0.1'](0, 1, {kwarg: 'value'}, (err, result) => {});
+// Release Version (SemVer) Specified
+lib.user.helloWorld['@0.1.1']('world', (err, result) => {});
 
-// [5]: Call functions within the service (not just the defaultFunction)
-//      This is equivalent to (1) when "main" is the default function
-lib.stdlib.reflect.main(0, 1, {kwarg: 'value'}, (err, result) => {});
+// Promise
+lib.user.helloWorld('world')
+  .catch(err => {})
+  .then(result => {});
 
-// Valid string composition from first object property only:
-lib['stdlib.reflect'](0, 1, {kwarg: 'value'}, (err, result) => {});
-lib['stdlib.reflect[@dev]'](0, 1, {kwarg: 'value'}, (err, result) => {});
-lib['stdlib.reflect[@release]'](0, 1, {kwarg: 'value'}, (err, result) => {});
-lib['stdlib.reflect[@0.0.1]'](0, 1, {kwarg: 'value'}, (err, result) => {});
-lib['stdlib.reflect.main'](0, 1, {kwarg: 'value'}, (err, result) => {});
-lib['stdlib.reflect[@dev].main'](0, 1, {kwarg: 'value'}, (err, result) => {});
-lib['stdlib.reflect[@release].main'](0, 1, {kwarg: 'value'}, (err, result) => {});
-lib['stdlib.reflect[@0.0.1].main'](0, 1, {kwarg: 'value'}, (err, result) => {});
+// Async
+let hello = await lib.user.helloWorld('world');
+
+// For HTTP header information, use callback-style
+lib.user.helloWorld('hello', (err, result, headers) => {});
 ```
 
 ## Additional Information
