@@ -179,7 +179,7 @@ var lib = (function (window) {
         return ncfg
       }, {});
       cfg.host = cfg.host || HOST;
-      cfg.port = cfg.port || PORT;
+      cfg.port = parseInt(cfg.port || PORT) || 80;
       cfg.path = cfg.path || PATH;
       cfg.debug = !!cfg.debug;
 
@@ -210,8 +210,9 @@ var lib = (function (window) {
       var xhr = new XMLHttpRequest();
       xhr.open(
         'POST',
-        '//' + cfg.host +
-        (cfg.port ? ':' + cfg.port : '') +
+        (cfg.port === 443 ? 'https' : 'http') +
+        '://' + cfg.host +
+        ((cfg.port === 80 || cfg.port === 443) ? '' : ':' + cfg.port) +
         cfg.path + pathname
       );
       xhr.responseType = 'blob';
