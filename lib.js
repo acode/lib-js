@@ -84,7 +84,7 @@ var lib = (function (window) {
 
   function parseParameters(names, params) {
 
-    let callback;
+    var callback;
 
     if (typeof params[params.length - 1] === 'function') {
       callback = params.pop();
@@ -164,7 +164,7 @@ var lib = (function (window) {
 
   function executeRemote(cfg, names, params, callback) {
 
-    let formatParamsAsync = Array.isArray(params) ?
+    var formatParamsAsync = Array.isArray(params) ?
       formatParamsArrayAsync : formatParamsObjectAsync;
 
     formatParamsAsync(params, function (err, params) {
@@ -296,8 +296,8 @@ var lib = (function (window) {
       } else if (names.length === 1) {
         return LibGen(rootCfg, {keys: (typeof args[0] === 'object' ? args[0] : {})}, names);
       } else {
-        let p = parseParameters(names, args);
-        let execute = executeRemote.bind(null, cfg, names, p.params);
+        var p = parseParameters(names, args);
+        var execute = executeRemote.bind(null, cfg, names, p.params);
         if (p.callback) {
           return execute(p.callback);
         } else {
