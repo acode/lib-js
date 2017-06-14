@@ -155,7 +155,7 @@ var lib = (function (window) {
 
   }
 
-  var HOST = 'f.stdlib.com';
+  var HOST = 'functions.lib.id';
   var PORT = 443;
   var PATH = '/';
 
