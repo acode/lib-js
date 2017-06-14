@@ -16,7 +16,10 @@ var lib = (function (window) {
   }
 
   function formatParamsObjectAsync(params, callback) {
-    params = params || {};
+    params = Object.keys(params || {}).reduce(function (obj, key) {
+      obj[key] = params[key];
+      return obj;
+    }, {});
     var formattedParams = {};
     if (!Object.keys(params).length) {
       return callback(null, formattedParams);
