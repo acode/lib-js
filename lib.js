@@ -132,7 +132,7 @@ var lib = (function (window) {
       var arr;
 
       if (versionMatch) {
-        version = versionMatch[1];
+        var version = versionMatch[1];
         version = version.replace(/^\[?(.*?)\]?$/, '$1');
         str = str.replace(versionMatch[1], '');
         arr = str.split('.');
