@@ -43,16 +43,16 @@ var lib = (function (window) {
   };
 
   function containsKeywords(params) {
-    return params[0] === 'object' &&
-    !Array.isArray(params[0]) &&
-    !(params[0] instanceof Blob);
+    return typeof params[0] === 'object' &&
+      !Array.isArray(params[0]) &&
+      !(params[0] instanceof Blob);
   }
 
   function formatParams(params) {
     var src = params[0] || {};
     var dst = {};
     return Object.keys(params[0] || {}).reduce((dst, name) => {
-      dst[name] = formatBuffer(src[name]);
+      dst[name] = src[name];
       return dst;
     }, dst);
   }
