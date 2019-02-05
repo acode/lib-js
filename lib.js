@@ -42,47 +42,19 @@ var lib = (function (window) {
     Object.keys(params).forEach(function(key, i) { formatBlobAsync(params[key], complete(key)); });
   };
 
-  function formatParamsArrayAsync(params, callback) {
-    params = params || [];
-    var formattedParams = new Array(params.length);
-    if (!params.length) {
-      return callback(null, formattedParams);
-    }
-    var error = null;
-    var complete = function (i) {
-      return function(err, result) {
-        if (error || !params.length) {
-          return;
-        }
-        if (err) {
-          error = err;
-          return callback(err);
-        }
-        params.pop();
-        formattedParams[i] = result;
-        return params.length || callback(null, formattedParams);
-      };
-    };
-    params.slice(0).forEach(function(param, i) { formatBlobAsync(param, complete(i)); });
-  };
-
   function containsKeywords(params) {
-    return params.length &&
-    typeof params[0] === 'object' &&
+    return params[0] === 'object' &&
     !Array.isArray(params[0]) &&
     !(params[0] instanceof Blob);
   }
 
   function formatParams(params) {
-    if (containsKeywords(params)) {
-      if (params.length > 1) {
-        throw new Error('Can not send additional arguments with parameters as keywords');
-      } else {
-        return params[0];
-      }
-    } else {
-      return params;
-    }
+    var src = params[0] || {};
+    var dst = {};
+    return Object.keys(params[0] || {}).reduce((dst, name) => {
+      dst[name] = formatBuffer(src[name]);
+      return dst;
+    }, dst);
   }
 
   function parseParameters(names, params) {
@@ -91,6 +63,12 @@ var lib = (function (window) {
 
     if (typeof params[params.length - 1] === 'function') {
       callback = params.pop();
+    }
+
+    if (params.length > 1) {
+      throw new Error('No more than one optional argument containing an object of key-value pairs expected.');
+    } else if (params.length && !containsKeywords(params)) {
+      throw new Error('Argument must be an object of key-value pairs that act as function parameters.');
     }
 
     return {
@@ -158,7 +136,7 @@ var lib = (function (window) {
 
   }
 
-  var HOST = 'functions.lib.id';
+  var HOST = 'api.stdlib.com';
   var PORT = 443;
   var PATH = '/';
 
@@ -167,10 +145,7 @@ var lib = (function (window) {
 
   function executeRemote(cfg, names, params, callback) {
 
-    var formatParamsAsync = Array.isArray(params) ?
-      formatParamsArrayAsync : formatParamsObjectAsync;
-
-    formatParamsAsync(params, function (err, params) {
+    formatParamsObjectAsync(params, function (err, params) {
 
       if (err) {
         return callback(err, null, {});
@@ -190,13 +165,18 @@ var lib = (function (window) {
       cfg.keys = cfg.keys || null;
       cfg.convert = !!cfg.convert;
 
+      var pathname;
+
       if (names[2] === `@${LOCALENV}`) {
         cfg.host = 'localhost';
         cfg.port = LOCALPORT;
         names[2] = '';
+        pathname = names.slice(0, 2).join('/') + names.slice(2).join('/');
+      } else {
+        cfg.host = names.slice(0, 1).concat(cfg.host).join('.');
+        pathname = names.slice(1, 2).join('/') + names.slice(2).join('/');
       }
 
-      var pathname = names.slice(0, 2).join('/') + names.slice(2).join('/');
       pathname = pathname + '/';
       var headers = {};
       var body;
