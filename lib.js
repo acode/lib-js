@@ -51,7 +51,7 @@ var lib = (function (window) {
   function formatParams(params) {
     var src = params[0] || {};
     var dst = {};
-    return Object.keys(params[0] || {}).reduce((dst, name) => {
+    return Object.keys(params[0] || {}).reduce(function (dst, name) {
       dst[name] = src[name];
       return dst;
     }, dst);
@@ -80,7 +80,7 @@ var lib = (function (window) {
 
   function appendVersion(names, str) {
     if (!str.match(/^@[A-Z0-9\.]+$/gi)) {
-      throw new Error(`${names.join('.')} invalid version: ${str}`);
+      throw new Error(names.join('.') + ' invalid version: ' + str);
     }
     return names.concat(str);
   }
@@ -88,9 +88,9 @@ var lib = (function (window) {
   function appendPath(names, str) {
     if (!str.match(/^[A-Z0-9\-\_]+$/gi)) {
       if (str.indexOf('@') !== -1) {
-        throw new Error(`${names.join('.')} invalid name: ${str}, please specify versions and environments with [@version]`);
+        throw new Error(names.join('.') + ' invalid name: ' + str + ', please specify versions and environments with [@version]');
       }
-      throw new Error(`${names.join('.')} invalid name: ${str}`);
+      throw new Error(names.join('.') + ' invalid name: ' + str);
     }
     return names.concat(str);
   }
@@ -167,7 +167,7 @@ var lib = (function (window) {
 
       var pathname;
 
-      if (names[2] === `@${LOCALENV}`) {
+      if (names[2] === '@' + LOCALENV) {
         cfg.host = 'localhost';
         cfg.port = LOCALPORT;
         names[2] = '';
@@ -185,10 +185,10 @@ var lib = (function (window) {
       headers['X-Faaslang'] = 'true';
       body = new Blob([JSON.stringify(params)]);
 
-      cfg.token && (headers['Authorization'] = `Bearer ${cfg.token}`);
+      cfg.token && (headers['Authorization'] = 'Bearer ' + cfg.token);
       cfg.keys && (headers['X-Authorization-Keys'] = JSON.stringify(cfg.keys));
       cfg.convert && (headers['X-Convert-Strings'] = 'true');
-      cfg.bg && (pathname += `:bg${typeof cfg.bg === 'string' ? '=' + encodeURIComponent(cfg.bg) : ''}`);
+      cfg.bg && (pathname += ':bg' + (typeof cfg.bg === 'string' ? '=' + encodeURIComponent(cfg.bg) : ''));
 
       var xhr = new XMLHttpRequest();
       xhr.open(
