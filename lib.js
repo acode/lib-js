@@ -178,6 +178,13 @@ var lib = (function (window) {
       }
 
       pathname = pathname + '/';
+      if (params.__path) {
+        pathname = pathname + params.__path;
+        if (!pathname.endsWith('/')) {
+          pathname = pathname + '/';
+        }
+        delete params.__path;
+      }
       var headers = {};
       var body;
 
