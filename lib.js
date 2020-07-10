@@ -13,11 +13,11 @@ var lib = (function (window) {
           });
         });
       })).then(function (formattedBlobParams) {
-          var formattedObj = formattedBlobParams.reduce(function (formattedObj, formattedParam) {
-            formattedObj[formattedParam.key] = formattedParam.formattedValue;
-            return formattedObj;
+          var formattedObject = formattedBlobParams.reduce(function (formattedObject, formattedParam) {
+            formattedObject[formattedParam.key] = formattedParam.formattedValue;
+            return formattedObject;
           }, {});
-          return callback(null, formattedObj);
+          return callback(null, formattedObject);
         }).catch(function (error) {
           return callback(error)
         });
