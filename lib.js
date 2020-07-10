@@ -9,17 +9,18 @@ var lib = (function (window) {
             if (err) {
               return reject(err);
             }
-            return resolve({key: key, formatted: formatted});
+            return resolve({key: key, formattedValue: formatted});
           });
         });
-      })).then(function (result) {
-          var formattedObj = {};
-          result.map(function (r) {
-            formattedObj[r.key] = r.formatted;
-          });
+      })).then(function (formattedBlobParams) {
+          var formattedObj = formattedBlobParams.reduce(function (formattedObj, formattedParam) {
+            formattedObj[formattedParam.key] = formattedParam.formattedValue;
+            return formattedObj;
+          }, {});
           return callback(null, formattedObj);
-        })
-         .catch(function (error) {return callback(error)})
+        }).catch(function (error) {
+          return callback(error)
+        });
     } else if (type === 'array') {
       return Promise.all(param.map(function (elem) {
         return new Promise(function (resolve, reject) {
@@ -30,8 +31,11 @@ var lib = (function (window) {
             return resolve(formatted);
           });
         });
-      })).then(function (result) {return callback(null, result)})
-         .catch(function (error) {return callback(error)});
+      })).then(function (formattedBlobParams) {
+        return callback(null, formattedBlobParams)
+      }).catch(function (error) {
+        return callback(error)
+      });
     } else {
       return param instanceof Blob ?
         (function (param) {
