@@ -1,19 +1,67 @@
 var lib = (function (window) {
 
-  function formatBlobAsync(blob, callback) {
-    return blob instanceof Blob ?
-      (function (blob) {
-        var reader = new FileReader();
-        reader.addEventListener('error', function (err) {
-          return callback(err);
+  function formatBlobAsync(param, callback) {
+    var type = getType(param);
+    if (type === 'object') {
+      return Promise.all(Object.keys(param).map(function (key) {
+        return new Promise(function (resolve, reject) {
+          return formatBlobAsync(param[key], function (err, formatted) {
+            if (err) {
+              return reject(err);
+            }
+            return resolve({key: key, formattedValue: formatted});
+          });
         });
-        reader.addEventListener('load', function() {
-          return callback(null, {_base64: reader.result.split(',')[1]});
+      })).then(function (formattedBlobParams) {
+          var formattedObject = formattedBlobParams.reduce(function (formattedObject, formattedParam) {
+            formattedObject[formattedParam.key] = formattedParam.formattedValue;
+            return formattedObject;
+          }, {});
+          return callback(null, formattedObject);
+        }).catch(function (error) {
+          return callback(error)
         });
-        reader.readAsDataURL(blob);
-      })(blob) :
-      callback(null, blob);
+    } else if (type === 'array') {
+      return Promise.all(param.map(function (elem) {
+        return new Promise(function (resolve, reject) {
+          return formatBlobAsync(elem, function (err, formatted) {
+            if (err) {
+              return reject(err);
+            }
+            return resolve(formatted);
+          });
+        });
+      })).then(function (formattedBlobParams) {
+        return callback(null, formattedBlobParams)
+      }).catch(function (error) {
+        return callback(error)
+      });
+    } else {
+      return param instanceof Blob ?
+        (function (param) {
+          var reader = new FileReader();
+          reader.addEventListener('error', function (err) {
+            return callback(err);
+          });
+          reader.addEventListener('load', function() {
+            return callback(null, {_base64: reader.result.split(',')[1]});
+          });
+          reader.readAsDataURL(param);
+        })(param) :
+        callback(null, param);
+    }
+
   }
+
+  function getType(v) {
+    if (v === undefined || v === null || typeof v === 'function') {
+      return 'any';
+    } else if (typeof v !== 'object') {
+      return typeof v;
+    } else {
+      return Array.isArray(v) ? 'array' : (v instanceof Blob ? 'blob' : 'object');
+    }
+  };
 
   function formatParamsObjectAsync(params, callback) {
     params = Object.keys(params || {}).reduce(function (obj, key) {
