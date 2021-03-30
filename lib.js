@@ -1,67 +1,19 @@
-var lib = (function (window) {
+window['lib'] = (function (window) {
 
-  function formatBlobAsync(param, callback) {
-    var type = getType(param);
-    if (type === 'object') {
-      return Promise.all(Object.keys(param).map(function (key) {
-        return new Promise(function (resolve, reject) {
-          return formatBlobAsync(param[key], function (err, formatted) {
-            if (err) {
-              return reject(err);
-            }
-            return resolve({key: key, formattedValue: formatted});
-          });
+  function formatBlobAsync(blob, callback) {
+    return blob instanceof Blob ?
+      (function (blob) {
+        var reader = new FileReader();
+        reader.addEventListener('error', function (err) {
+          return callback(err);
         });
-      })).then(function (formattedBlobParams) {
-          var formattedObject = formattedBlobParams.reduce(function (formattedObject, formattedParam) {
-            formattedObject[formattedParam.key] = formattedParam.formattedValue;
-            return formattedObject;
-          }, {});
-          return callback(null, formattedObject);
-        }).catch(function (error) {
-          return callback(error)
+        reader.addEventListener('load', function() {
+          return callback(null, {_base64: reader.result.split(',')[1]});
         });
-    } else if (type === 'array') {
-      return Promise.all(param.map(function (elem) {
-        return new Promise(function (resolve, reject) {
-          return formatBlobAsync(elem, function (err, formatted) {
-            if (err) {
-              return reject(err);
-            }
-            return resolve(formatted);
-          });
-        });
-      })).then(function (formattedBlobParams) {
-        return callback(null, formattedBlobParams)
-      }).catch(function (error) {
-        return callback(error)
-      });
-    } else {
-      return param instanceof Blob ?
-        (function (param) {
-          var reader = new FileReader();
-          reader.addEventListener('error', function (err) {
-            return callback(err);
-          });
-          reader.addEventListener('load', function() {
-            return callback(null, {_base64: reader.result.split(',')[1]});
-          });
-          reader.readAsDataURL(param);
-        })(param) :
-        callback(null, param);
-    }
-
+        reader.readAsDataURL(blob);
+      })(blob) :
+      callback(null, blob);
   }
-
-  function getType(v) {
-    if (v === undefined || v === null || typeof v === 'function') {
-      return 'any';
-    } else if (typeof v !== 'object') {
-      return typeof v;
-    } else {
-      return Array.isArray(v) ? 'array' : (v instanceof Blob ? 'blob' : 'object');
-    }
-  };
 
   function formatParamsObjectAsync(params, callback) {
     params = Object.keys(params || {}).reduce(function (obj, key) {
@@ -127,9 +79,6 @@ var lib = (function (window) {
   };
 
   function appendVersion(names, str) {
-    if (!str.match(/^@[A-Z0-9\.]+$/gi)) {
-      throw new Error(names.join('.') + ' invalid version: ' + str);
-    }
     return names.concat(str);
   }
 
@@ -214,18 +163,32 @@ var lib = (function (window) {
       cfg.convert = !!cfg.convert;
 
       var pathname;
-
-      if (names[2] === '@' + LOCALENV) {
+      if ((names[2] || '').split(':')[0] === '@' + LOCALENV) {
         cfg.host = 'localhost';
-        cfg.port = LOCALPORT;
+        cfg.port = parseInt((names[2] || '').split(':')[1]) || LOCALPORT;
         names[2] = '';
-        pathname = names.slice(0, 2).join('/') + names.slice(2).join('/');
+        if (cfg.port !== LOCALPORT) {
+          pathname = names.slice(3).join('/');
+        } else {
+          // It's a root server
+          pathname = names.slice(0, 2).join('/') + names.slice(2).join('/');
+        }
       } else {
         cfg.host = names.slice(0, 1).concat(cfg.host).join('.');
         pathname = names.slice(1, 2).join('/') + names.slice(2).join('/');
       }
 
       pathname = pathname + '/';
+      if (params.hasOwnProperty('__path')) {
+        if (params.__path.startsWith('/')) {
+          params.__path = params.__path.slice(1);
+        }
+        pathname = pathname + params.__path;
+        if (!pathname.endsWith('/')) {
+          pathname = pathname + '/';
+        }
+        delete params.__path;
+      }
       var headers = {};
       var body;
 
@@ -251,25 +214,24 @@ var lib = (function (window) {
         xhr.setRequestHeader(header, headers[header]);
       });
       xhr.addEventListener('readystatechange', function() {
-
         if (xhr.readyState === 0) {
           return callback(new Error('Request aborted.'), null, {});
-        }
-
-        if (xhr.readyState === 4) {
-
+        } else if (xhr.readyState === 4) {
           if (xhr.status === 0) {
-            return callback(new Error('Could not run function.'), null, {});
+            return callback(new Error('HTTP request returned status code 0. This usually means the request is being blocked.'), null, {});
           }
-
           var response = xhr.response;
           var contentType = response.type;
-          var resheaders = xhr.getAllResponseHeaders();
+          var resheaders = xhr.getAllResponseHeaders()
+            .split('\r\n')
+            .reduce(function (headers, line) {
+              var key = line.split(':')[0];
+              var value = line.split(':').slice(1).join(':').trim();
+              headers[key] = value;
+              return headers;
+            }, {});
 
-          if (
-            contentType === 'application/json' ||
-            contentType === 'text/plain'
-          ) {
+          if (contentType === 'application/json') {
             var reader = new FileReader();
             reader.addEventListener('error', function() {
               return callback(new Error('Could not read response'), response, resheaders);
@@ -301,9 +263,7 @@ var lib = (function (window) {
           } else {
             return callback(null, response, resheaders);
           }
-
         }
-
       });
 
       xhr.send(body);

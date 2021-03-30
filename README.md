@@ -1,18 +1,13 @@
-# Standard Library JavaScript (Web) Bindings
+# Autocode standard library JavaScript (web) bindings
 
-[Standard Library Setup](https://github.com/stdlib/lib) |
-[Node](https://github.com/stdlib/lib-node) |
-[Python](https://github.com/stdlib/lib-python) |
-[Ruby](https://github.com/stdlib/lib-ruby) |
-**Web**
+Basic JavaScript (web) bindings for the Autocode standard library.
 
-Basic JavaScript (Web) bindings for Standard Library service accession.
+Used to interface with services built using [Autocode](https://autocode.com) and
+the [Autocode CLI](https://github.com/acode/lib).
 
-Used to interface with services built using [Standard Library](https://stdlib.com) and
-the [Standard Library Command Line Tools](https://github.com/stdlib/lib).
-You can utilize any service on Standard Library without installing any additional
-dependencies, and when you've deployed services to Standard Library, you have a pre-built
-web-based SDK --- for example;
+You can utilize any service on Autocode without installing any additional
+dependencies, and when you've deployed services to the Autocode standard library,
+you have a pre-built web-based SDK &mdash; for example;
 
 ```javascript
 lib.yourUsername.hostStatus({name: 'Dolores Abernathy'}, (err, result) => {
@@ -22,8 +17,8 @@ lib.yourUsername.hostStatus({name: 'Dolores Abernathy'}, (err, result) => {
 });
 ```
 
-To discover Standard Library services, visit https://stdlib.com/search. To build a service,
-get started with [the Standard Library CLI tools](https://github.com/stdlib/lib).
+To discover Autocode APIs, visit https://autocode.com/lib. To build a service,
+get started with [the Autocode CLI tools](https://github.com/acode/lib).
 
 ## Installation
 
@@ -68,9 +63,9 @@ lib.user.helloWorld('hello', (err, result, headers) => {});
 
 ## Additional Information
 
-To learn more about Standard Library, visit [stdlib.com](https://stdlib.com) or read the
-[Standard Library CLI documentation on GitHub](https://github.com/stdlib/lib).
+To learn more about Autocode, visit [autocode.com](https://autocode.com) or read the
+[Autocode CLI documentation on GitHub](https://github.com/acode/lib).
 
-You can follow the development team on Twitter, [@StdLibHQ](https://twitter.com/stdlibhq)
+You can follow the development team on Twitter, [@AutocodeHQ](https://twitter.com/AutocodeHQ)
 
-Standard Library is &copy; 2019 Polybit Inc.
+Autocode is &copy; 2016 - 2021 Polybit Inc.
