@@ -1,5 +1,181 @@
 window['lib'] = (function (window) {
 
+  function base64ToByteArrays(b64data, sliceSize) {
+    sliceSize = sliceSize || 512;
+    var byteCharacters = window.atob(b64data);
+    var byteArrays = [];
+    for (var offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+      var slice = byteCharacters.slice(offset, offset + sliceSize);
+      var byteNumbers = new Array(slice.length);
+      for (var i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      var byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+    return byteArrays;
+  };
+
+  function base64ToBlob (b64data, contentType, sliceSize) {
+    var byteArrays = base64ToByteArrays(b64data, sliceSize);
+    contentType = contentType || 'application/octet-stream';
+    var blob = new Blob(byteArrays, {type: contentType});
+    return blob;
+  };
+
+  function readListeners (obj) {
+    var copyObj = typeof obj === 'object'
+      ? Array.isArray(obj)
+        ? {}
+        : obj || {}
+      : {};
+    var listeners = {};
+    Object.keys(copyObj).forEach(function (key) {
+      if (typeof copyObj[key] === 'function') {
+        listeners[key] = copyObj[key];
+      } else {
+        listeners[key] = (function () {});
+      }
+    });
+    return listeners;
+  };
+
+  function SSEHandler (streamListeners, debugListeners, responseListener) {
+    this.processing = '';
+    this.streamListeners = readListeners(streamListeners);
+    this.debugListeners = readListeners(debugListeners);
+    this.responseListeners = readListeners({'@response': responseListener});
+    this.events = {};
+  }
+
+  SSEHandler.prototype.process = function (text) {
+    var entries = [];
+    if (text) {
+      this.processing = this.processing + text;
+      entries = this.processing.split('\n\n');
+      var lastEntry = entries.pop();
+      this.processing = lastEntry;
+    }
+    entries
+      .filter(entry => !!entry)
+      .forEach(entry => {
+        var id = null;
+        var event = 'message';
+        var time = new Date().toISOString();
+        var data = '';
+        var lines = entry.split('\n').map((line, i) => {
+          var lineData = line.split(':');
+          var type = lineData[0];
+          var contents = lineData.slice(1).join(':');
+          if (contents[0] === ' ') {
+            contents = contents.slice(1);
+          }
+          if (type === 'event' && !data) {
+            event = contents;
+          } else if (type === 'data') {
+            if (data) {
+              data = data + '\n' + contents;
+            } else {
+              data = contents;
+            }
+          } else if (type === 'id') {
+            id = contents;
+            var date = new Date(id.split('/')[0]);
+            if (date.toString() !== 'Invalid Date') {
+              time = date.toISOString();
+            }
+          }
+        });
+        this.events[event] = this.events[event] || [];
+        var name = event;
+        var value = JSON.parse(data);
+        var eventData = {
+          id: id,
+          event: name,
+          data: value,
+          time: time,
+          index: this.events[event].length
+        };
+        this.events[event].push(eventData);
+        if (this.streamListeners[event]) {
+          this.streamListeners[event].call(
+            null,
+            name,
+            value,
+            eventData
+          );
+        }
+        if (this.streamListeners['*'] && !event.startsWith('@')) {
+          this.streamListeners['*'].call(
+            null,
+            name,
+            value,
+            eventData
+          );
+        }
+        if (this.debugListeners[event]) {
+          this.debugListeners[event].call(
+            null,
+            name,
+            value,
+            eventData
+          );
+        }
+        if (this.debugListeners['*'] && event !== '@response') {
+          this.debugListeners['*'].call(
+            null,
+            name,
+            value,
+            eventData
+          );
+        }
+        if (this.responseListeners[event]) {
+          this.responseListeners[event].call(
+            null,
+            name,
+            value,
+            eventData
+          );
+        }
+      })
+  };
+
+  function responseHandler (statusCode, headers, response, callback) {
+    var contentType = response.type;
+    if (contentType === 'application/json') {
+      var reader = new FileReader();
+      reader.addEventListener('error', function() {
+        return callback(new Error('Could not read response'), response, headers);
+      });
+      reader.addEventListener('load', function() {
+        var response = reader.result;
+        if (contentType === 'application/json') {
+          try {
+            response = JSON.parse(response);
+          } catch(e) {
+            return callback(new Error('Invalid Response JSON'));
+          }
+        }
+        if (((statusCode / 100) | 0) !== 2) {
+          var message = typeof response === 'object' ?
+            (response && response.error && response.error.message) || 'Unspecified Error' :
+            response;
+          var error = new Error(message);
+          if (response.error && typeof response.error === 'object') {
+            Object.keys(response.error).forEach(function (key) {
+              error[key] = response.error[key];
+            });
+          }
+          return callback(error, response, headers);
+        } else
+        return callback(null, response, headers);
+      });
+      reader.readAsText(response);
+    } else {
+      return callback(null, response, headers);
+    }
+  }
+
   function formatBlobAsync(blob, callback) {
     return blob instanceof Blob ?
       (function (blob) {
@@ -209,60 +385,89 @@ window['lib'] = (function (window) {
         ((cfg.port === 80 || cfg.port === 443) ? '' : ':' + cfg.port) +
         cfg.path + pathname
       );
-      xhr.responseType = 'blob';
+      var lastResponseText = '';
+      var serverSentEvent = null;
+      if (
+        (params._stream || params._stream === '') ||
+        (params._debug || params._debug === '')
+      ) {
+        serverSentEvent = new SSEHandler(
+          params._stream,
+          params._debug,
+          function (name, value, eventData) {
+            var headers = {};
+            var body = null;
+            Object.keys(value.headers).forEach(function (key) {
+              headers[key.toLowerCase()] = value.headers[key];
+            });
+            if (headers['content-type'] !== 'application/json') {
+              var json;
+              try {
+                json = JSON.parse(value.body);
+                if (
+                  Object.keys(json).length === 1 &&
+                  json._base64
+                ) {
+                  body = base64ToBlob(json._base64, headers['content-type'])
+                }
+              } catch (e) {
+                // do nothing
+              }
+            }
+            if (!body) {
+              body = new Blob([value.body], {type: headers['content-type']});
+            }
+            responseHandler(
+              value.statusCode,
+              headers,
+              body,
+              callback
+            );
+          }
+        );
+        xhr.responseType = 'text';
+      } else {
+        xhr.responseType = 'blob';
+      }
       Object.keys(headers).forEach(function (header) {
         xhr.setRequestHeader(header, headers[header]);
       });
       xhr.addEventListener('readystatechange', function() {
+        var resheaders = xhr.getAllResponseHeaders()
+          .split('\r\n')
+          .reduce(function (headers, line) {
+            var key = line.split(':')[0];
+            var value = line.split(':').slice(1).join(':').trim();
+            headers[key] = value;
+            return headers;
+          }, {});
         if (xhr.readyState === 0) {
           return callback(new Error('Request aborted.'), null, {});
+        } else if (
+          resheaders['content-type'] === 'text/event-stream' &&
+          serverSentEvent &&
+          (
+            xhr.readyState === 3 ||
+            xhr.readyState === 4
+          )
+        ) {
+          var text = xhr.responseText.slice(lastResponseText.length);
+          lastResponseText = xhr.responseText;
+          serverSentEvent.process(text);
         } else if (xhr.readyState === 4) {
           if (xhr.status === 0) {
             return callback(new Error('HTTP request returned status code 0. This usually means the request is being blocked.'), null, {});
           }
-          var response = xhr.response;
-          var contentType = response.type;
-          var resheaders = xhr.getAllResponseHeaders()
-            .split('\r\n')
-            .reduce(function (headers, line) {
-              var key = line.split(':')[0];
-              var value = line.split(':').slice(1).join(':').trim();
-              headers[key] = value;
-              return headers;
-            }, {});
-
-          if (contentType === 'application/json') {
-            var reader = new FileReader();
-            reader.addEventListener('error', function() {
-              return callback(new Error('Could not read response'), response, resheaders);
-            });
-            reader.addEventListener('load', function() {
-              var response = reader.result;
-              if (contentType === 'application/json') {
-                try {
-                  response = JSON.parse(response);
-                } catch(e) {
-                  return callback(new Error('Invalid Response JSON'));
-                }
-              }
-              if (((xhr.status / 100) | 0) !== 2) {
-                var message = typeof response === 'object' ?
-                  (response && response.error && response.error.message) || 'Unspecified Error' :
-                  response;
-                var error = new Error(message);
-                if (response.error && typeof response.error === 'object') {
-                  Object.keys(response.error).forEach(function (key) {
-                    error[key] = response.error[key];
-                  });
-                }
-                return callback(error, response, resheaders);
-              } else
-              return callback(null, response, resheaders);
-            });
-            reader.readAsText(response);
+          var response;
+          if (xhr.responseType === 'text') {
+            response = new Blob(
+              [xhr.responseText],
+              {type: resheaders['content-type']}
+            );
           } else {
-            return callback(null, response, resheaders);
+            response = xhr.response;
           }
+          responseHandler(xhr.status, resheaders, response, callback);
         }
       });
 

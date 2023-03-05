@@ -68,4 +68,4 @@ To learn more about Autocode, visit [autocode.com](https://autocode.com) or read
 
 You can follow the development team on Twitter, [@AutocodeHQ](https://twitter.com/AutocodeHQ)
 
-Autocode is &copy; 2016 - 2021 Polybit Inc.
+Autocode is &copy; 2016 - 2023 Polybit Inc.
