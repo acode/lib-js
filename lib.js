@@ -368,11 +368,34 @@ window['lib'] = (function (window) {
       var headers = {};
       var body;
 
+      if (params.hasOwnProperty('__headers')) {
+        if (
+          params.__headers &&
+          typeof params.__headers === 'object' &&
+          !Array.isArray(params.__headers) &&
+          !Buffer.isBuffer(params.__headers)
+        ) {
+          Object.keys(params.__headers).forEach(key => {
+            headers[key] = params.__headers[key];
+          });
+        } else {
+          throw new Error(`Invalid headers provided: Must be an object`);
+        }
+        delete params.__headers;
+      }
+
+      if (params.hasOwnProperty('__providers')) {
+        headers['X-Authorization-Providers'] = typeof params.__providers === 'string'
+          ? params.__providers
+          : JSON.stringify(params.__providers);
+        delete params.__providers;
+      }
+
       headers['Content-Type'] = 'application/json';
       headers['X-Faaslang'] = 'true';
       body = new Blob([JSON.stringify(params)]);
 
-      cfg.token && (headers['Authorization'] = 'Bearer ' + cfg.token);
+      cfg.token && (headers['Authorization'] = headers['Authorization'] || 'Bearer ' + cfg.token);
       cfg.keys && (headers['X-Authorization-Keys'] = JSON.stringify(cfg.keys));
       cfg.convert && (headers['X-Convert-Strings'] = 'true');
       cfg.bg && (pathname += ':bg' + (typeof cfg.bg === 'string' ? '=' + encodeURIComponent(cfg.bg) : ''));
